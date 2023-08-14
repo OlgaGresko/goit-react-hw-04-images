@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import fetchGallery from 'services/api';
@@ -9,123 +9,99 @@ import Modal from './Modal/Modal';
 
 const PER_PAGE = '12';
 
-export default class App extends Component {
-  state = {
-    isLoading: false,
-    isError: false,
-    filter: '',
-    error: null,
-    pictures: [],
-    page: 1,
-    pictureId: null,
-    showModal: false,
+export default function App() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [query, setQuery] = useState('');
+  const [pictures, setPictures] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pictureId, setPictureId] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetchGallery(query, page);
+      if (response.length === 0) {
+        Notify.failure('Sorry, no images for your request :(');
+      } else {
+        setPictures(prevPictures => [...prevPictures, ...response]);
+      }
+    } catch (error) {
+      setIsError(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  async componentDidUpdate(_, prevState) {
-    if (
-      prevState.filter !== this.state.filter ||
-      prevState.page !== this.state.page
-    ) {
-      try {
-        const response = await fetchGallery(this.state.filter, this.state.page);
-        if (response.length === 0) {
-          Notify.failure('Sorry, no images for your request :(');
-        }
-        this.setState(prevState => ({
-          pictures: [...prevState.pictures, ...response],
-          isLoading: false,
-        }));
-      } catch (error) {
-        this.setState({
-          isError: error.message,
-        });
-      } finally {
-        this.setState({
-          isLoading: false,
-        });
-      }
+  useEffect(() => {
+    if (query && page > 0) {
+      fetchData();
     }
-  }
+  }, [query, page]);
 
-  handleSubmit = async e => {
+  const handleSubmit = async e => {
     if (e) {
       e.preventDefault();
     }
     const inputValue = e.currentTarget.elements.query.value;
     if (inputValue === '') {
       Notify.failure('Please type something!');
-      this.setState({ isLoading: false });
+      setIsLoading(false);
       return;
     }
-    if (inputValue !== this.state.filter) {
-      this.setState({
-        isLoading: true,
-        pictures: [],
-        filter: inputValue,
-        page: 1,
-      });
+    if (inputValue !== query) {
+      setIsLoading(true);
+      setPictures([]);
+      setQuery(inputValue);
+      setPage(1);
     }
   };
 
-  addMorePages = async () => {
-    this.setState(prevState => ({ page: prevState.page + 1, isLoading: true }));
+  const addMorePages = async () => {
+    setPage(prevPage => prevPage + 1);
+    setIsLoading(true);
   };
 
-  toggleModal = id => {
-    this.setState({
-      pictureId: id,
-    });
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
-    if (!this.state.showModal) {
+  const toggleModal = id => {
+    setPictureId(id);
+    setShowModal(prevState => !prevState);
+
+    if (!showModal) {
       document.body.classList.add('no-scroll');
     } else {
       document.body.classList.remove('no-scroll');
     }
   };
 
-  onChangeInput = e => {
-    this.setState({
-      filter: e.target.value.toLowerCase().trim(),
-    });
-  };
+  return (
+    <div
+      style={{
+        height: '100vh',
+        display: 'grid',
+        alignContent: 'start',
+        gridTemplateColumns: '1fr',
+        gridGap: 16,
+        paddingBottom: 24,
+        fontSize: 40,
+        color: '#010101',
+      }}
+    >
+      <Searchbar onSubmit={handleSubmit} />
 
-  render() {
-    const { pictures, isLoading, showModal, pictureId } = this.state;
-
-    return (
-      <div
-        style={{
-          height: '100vh',
-          display: 'grid',
-          alignContent: 'start',
-          gridTemplateColumns: '1fr',
-          gridGap: 16,
-          paddingBottom: 24,
-          fontSize: 40,
-          color: '#010101',
-        }}
-      >
-        <Searchbar onSubmit={this.handleSubmit} />
-
-        <ImageGallery
-          pictures={this.state.pictures}
-          toggleModal={this.toggleModal}
+      <ImageGallery pictures={pictures} toggleModal={toggleModal} />
+      {isLoading && <Loader />}
+      {pictures.length >= PER_PAGE && pictures.length % PER_PAGE === 0 && (
+        <Button onClick={addMorePages} />
+      )}
+      {showModal && (
+        <Modal
+          pictures={pictures}
+          id={pictureId}
+          onClose={toggleModal}
+          showModal={showModal}
         />
-        {isLoading && <Loader />}
-        {pictures.length >= PER_PAGE && pictures.length % PER_PAGE === 0 && (
-          <Button onClick={this.addMorePages} />
-        )}
-        {showModal && (
-          <Modal
-            pictures={pictures}
-            id={pictureId}
-            onClose={this.toggleModal}
-            showModal={this.state.showModal}
-          />
-        )}
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
 }
