@@ -9,6 +9,11 @@ export default function Modal({ pictures, id, onClose, showModal }) {
   const [pictureAlt, setPictureAlt] = useState('');
 
   useEffect(() => {
+    const handleKeyDown = e => {
+      if (e.code === 'Escape') {
+        onClose();
+      }
+    };
     const foundPicture = pictures.find(picture => picture.id === id);
     if (foundPicture) {
       setPictureLink(foundPicture.largeImageURL);
@@ -18,13 +23,7 @@ export default function Modal({ pictures, id, onClose, showModal }) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
-
-  const handleKeyDown = e => {
-    if (e.code === 'Escape') {
-      onClose();
-    }
-  };
+  }, [id, onClose, pictures]);
 
   const handleModalClick = e => {
     const backdrop = document.querySelector('#backdrop');

@@ -11,14 +11,17 @@ const PER_PAGE = '12';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
+  // const [isError, setIsError] = useState();
   const [query, setQuery] = useState('');
   const [pictures, setPictures] = useState([]);
   const [page, setPage] = useState(1);
   const [pictureId, setPictureId] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const fetchData = async () => {
+  
+
+  useEffect(() => {
+    const fetchData = async () => {
     setIsLoading(true);
     try {
       const response = await fetchGallery(query, page);
@@ -28,13 +31,11 @@ export default function App() {
         setPictures(prevPictures => [...prevPictures, ...response]);
       }
     } catch (error) {
-      setIsError(error);
+      console.error(error.message);
     } finally {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
     if (query && page > 0) {
       fetchData();
     }
